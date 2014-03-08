@@ -6,7 +6,7 @@ VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "c65"
-  config.vm.box_url = "http://vntx.cc/boxes/centos65.box"
+  config.vm.box_url = "http://vntx.cc/boxes/c65_vmware.box"
   config.ssh.forward_agent = true
 
   config.vm.network :forwarded_port, guest: 8080, host: 8080
@@ -14,9 +14,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # config.vm.network :public_network
   # config.vm.synced_folder "../data", "/vagrant_data"
 
-  config.vm.provider :virtualbox do |vb|
-    vb.gui = false
-    vb.customize ["modifyvm", :id, "--memory", "1024"]
+  config.vm.provider :vmware_fusion do |v|
+    v.gui = false
+    v.vmx["memsize"]  = "1024"
+    v.vmx["numvcpus"] = "2"
   end
 
   # provision with ansible
