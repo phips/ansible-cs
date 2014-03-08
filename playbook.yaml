@@ -1,0 +1,68 @@
+---
+- hosts: default
+  vars:
+    myname: csmgr
+    mysql_cloud_password: CHANGEME
+    deploy-to-xen: True
+  tasks:
+    - name: Ensure required packages are installed
+      yum:  name={{ item }} state=present
+      with_items:
+        - libselinux-python
+        - mysql-server
+        - nfs-utils
+
+    - name: Ensure EPEL RPM installed
+      yum:  name=http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm state=present
+
+    - name: Ensure aliases.sh present
+      copy: src=files/aliases.sh dest=/etc/profile.d/aliases.sh
+            owner=root group=root mode=0644
+
+    - name: Ensure hostname set
+      hostname: name={{ myname }}
+
+    - name: Ensure hostname is in /etc/hosts
+      lineinfile:
+        dest=/etc/hosts
+        regexp="{{ ansible_default_ipv4.address }} {{ myname }}"
+        line="{{ ansible_default_ipv4.address }} {{ myname }}"
+
+    - name: Ensure MySQL running
+      service: name=mysqld state=started
+
+    - name: Ensure CloudStack specifc my.cnf tunings present
+      lineinfile: dest=/etc/my.cnf regexp="{{ item }}" line="{{ item }}"
+      with_items:
+        - skip-name-resolve
+        - innodb_rollback_on_timeout=1
+        - innodb_lock_wait_timeout=600
+        - max_connections=350
+        - log-bin=mysql-bin
+        - binlog-format='ROW'
+      notify:
+        - mysql restart
+
+    - name: Ensure CloudStack Yumrepo configured
+      copy: src=files/cloudstack.repo dest=/etc/yum.repos.d/cloudstack.repo
+            owner=root group=root mode=0644
+
+    - name: Ensure CloudStack Management installed
+      yum: name=cloudstack-management state=installed
+
+    - name: Get vhd-util (for XenServer only)
+      get_url: url=http://download.cloud.com.s3.amazonaws.com/tools/vhd-util
+               dest=/usr/share/cloudstack-common/scripts/vm/hypervisor/xenserver
+               mode=0755
+      when: deploy-to-xen
+
+    - name: Setup CloudStack database
+      command: /usr/bin/cloudstack-setup-databases cloud:{{ mysql_cloud_password }}@localhost --deploy-as=root
+
+    - name: Setup CloudStack manager
+      command: /usr/bin/cloudstack-setup-management
+
+
+  handlers:
+    - name: mysql restart
+      service: name=mysqld enabled=yes state=restarted
