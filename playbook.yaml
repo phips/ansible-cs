@@ -1,10 +1,14 @@
 ---
 - hosts: default
+  sudo: yes
   vars:
     myname: csmgr
     mysql_cloud_password: CHANGEME
     deploy-to-xen: True
   tasks:
+    - name: Set SELinux to permissive
+      selinux: policy=targeted state=permissive
+    
     - name: Ensure required packages are installed
       yum:  name={{ item }} state=present
       with_items:
