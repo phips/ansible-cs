@@ -1,7 +1,10 @@
 ---
+# vim: set syn=ansible:
+#
 - hosts: default
   sudo: yes
   vars:
+    csversion: 4.4
     myname: csmgr
     mysql_cloud_password: CHANGEME
     deploy-to-xen: True
@@ -48,16 +51,17 @@
         - mysql restart
 
     - name: Ensure CloudStack Yumrepo configured
-      copy: src=files/cloudstack.repo dest=/etc/yum.repos.d/cloudstack.repo
-            owner=root group=root mode=0644
+      template: src=templates/cloudstack.repo.j2
+                dest=/etc/yum.repos.d/cloudstack.repo
+                owner=root group=root mode=0644
 
     - name: Ensure CloudStack Management installed
       yum: name=cloudstack-management state=installed
 
     - name: Get vhd-util (for XenServer only)
       get_url: url=http://download.cloud.com.s3.amazonaws.com/tools/vhd-util
-               dest=/usr/share/cloudstack-common/scripts/vm/hypervisor/xenserver
-               mode=0755
+        dest=/usr/share/cloudstack-common/scripts/vm/hypervisor/xenserver
+        mode=0755
       when: deploy-to-xen
 
     - name: Setup CloudStack database
